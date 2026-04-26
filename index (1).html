@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Permissions-Policy" content="microphone=*">
+<title>Quran Recitation Listener</title>
+<link href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════
+   Quran Recitation Listener — GitHub Pages standalone
+   Mobile-first responsive
+═══════════════════════════════════════════════════════ */
+:root{
+  --gold:#c9a84c;--gold-light:#e8c97a;--gold-dim:#8c7035;
+  --green:#1a5c3a;--green-mid:#2d8a58;
+  --ink:#0f1f16;--parchment:#faf6ee;--text-soft:#7a9080;
+  --border:rgba(201,168,76,.18);--card-bg:rgba(255,253,247,.04);
+  --active-bg:rgba(201,168,76,.22);--done-bg:rgba(45,138,88,.18);
+  --r:11px;--tap:44px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:'Lato',sans-serif;background:var(--ink);color:var(--parchment);
+  min-height:100vh;min-height:100dvh;overflow-x:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -5%,rgba(201,168,76,.10) 0%,transparent 60%),
+    radial-gradient(ellipse 55% 40% at 92% 100%,rgba(26,92,58,.18) 0%,transparent 55%),
+    repeating-linear-gradient(60deg,transparent,transparent 44px,rgba(201,168,76,.012) 44px,rgba(201,168,76,.012) 45px),
+    repeating-linear-gradient(-60deg,transparent,transparent 44px,rgba(201,168,76,.012) 44px,rgba(201,168,76,.012) 45px);
+}
+
+/* ── Layout ── */
+.wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 12px 80px}
+.header{text-align:center;padding:18px 0 14px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.bismillah{font-family:'Scheherazade New',serif;font-size:clamp(20px,6vw,42px);color:var(--gold);text-shadow:0 0 28px rgba(201,168,76,.35);line-height:1.5;margin-bottom:6px}
+.subtitle{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-dim)}
+
+/* Setup banner — shown until API URL is configured */
+.setup-banner{
+  background:linear-gradient(135deg,rgba(100,60,0,.9),rgba(60,30,0,.9));
+  border:1px solid var(--gold);border-radius:10px;
+  padding:16px 18px;margin-bottom:16px;
+}
+.setup-banner h3{color:var(--gold);font-size:13px;margin-bottom:8px}
+.setup-banner p{font-size:12px;color:#ffe0b0;line-height:1.7;margin-bottom:8px}
+.setup-banner code{
+  display:block;background:rgba(0,0,0,.4);border-radius:6px;
+  padding:8px 12px;font-size:11px;color:#ffd080;
+  word-break:break-all;margin:6px 0;
+}
+.setup-banner input{
+  width:100%;padding:10px 12px;border-radius:8px;
+  border:1px solid var(--gold);background:rgba(0,0,0,.3);
+  color:var(--parchment);font-size:14px;outline:none;margin-bottom:8px;
+}
+.setup-banner input:focus{border-color:var(--gold-light);background:rgba(201,168,76,.1)}
+
+/* Grid */
+.main-grid{display:flex;flex-direction:column;gap:12px}
+.left-col{display:flex;flex-direction:column;gap:10px}
+@media(min-width:640px){.wrap{padding:14px 16px 60px}.header{padding:24px 0 18px}}
+@media(min-width:900px){
+  .wrap{padding:20px 16px 60px}
+  .main-grid{display:grid;grid-template-columns:280px 1fr;gap:18px;align-items:start}
+  .left-col{gap:16px}
+}
+
+/* Cards */
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--r);backdrop-filter:blur(6px);overflow:hidden}
+.card-head{display:flex;align-items:center;gap:9px;padding:11px 14px;background:rgba(201,168,76,.07);border-bottom:1px solid var(--border)}
+.card-icon{font-size:14px}.card-title{font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--gold)}
+.card-body{padding:14px}
+
+/* Fields */
+.field{margin-bottom:12px}
+.lbl{display:block;font-size:9px;font-weight:700;letter-spacing:.14em;color:var(--gold-dim);margin-bottom:5px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.field-row .field{margin-bottom:0}
+.sel-wrap{position:relative}
+.sel-arr{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--gold-dim);font-size:11px;pointer-events:none}
+select,input[type="number"],input[type="text"]{
+  width:100%;padding:11px 12px;min-height:var(--tap);
+  background:rgba(255,253,247,.05);border:1px solid var(--border);border-radius:8px;
+  color:var(--parchment);font-family:'Lato',sans-serif;font-size:16px;
+  outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none;
+}
+select{padding-right:30px;font-size:14px}
+select:focus,input:focus{border-color:var(--gold);background:rgba(201,168,76,.07)}
+select option{background:#1a2e22}
+.loading-note{font-size:11px;color:var(--gold-dim);margin:4px 0 10px;font-style:italic}
+
+/* Buttons */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  width:100%;min-height:var(--tap);padding:12px 16px;
+  border-radius:9px;border:none;cursor:pointer;
+  font-family:'Lato',sans-serif;font-size:12px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;transition:all .18s;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.btn:disabled{opacity:.38;cursor:not-allowed!important;transform:none!important}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn-green{background:linear-gradient(135deg,var(--green),var(--green-mid));color:#fff;box-shadow:0 3px 16px rgba(26,92,58,.38)}
+.btn-green:not(:disabled):hover{transform:translateY(-1px)}
+.btn-gold{background:linear-gradient(135deg,var(--gold-dim),var(--gold));color:var(--ink);box-shadow:0 3px 14px rgba(201,168,76,.28)}
+.btn-red{background:rgba(160,30,30,.18);border:1px solid rgba(200,60,60,.3);color:#ff8080}
+.btn-red:hover{background:rgba(160,30,30,.3)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--gold)}
+.btn-outline:hover{background:rgba(201,168,76,.07);border-color:var(--gold)}
+.alert-box{background:rgba(160,40,40,.18);border:1px solid rgba(200,60,60,.3);color:#ffaaaa;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px}
+
+/* Mic test */
+.mic-status{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.06);border-radius:8px;font-size:12px}
+.mic-dot{width:10px;height:10px;border-radius:50%;background:#555;flex-shrink:0;transition:background .3s,box-shadow .3s}
+.mic-dot.ok  {background:#4caf50;box-shadow:0 0 8px #4caf50}
+.mic-dot.fail{background:#ff5252;box-shadow:0 0 8px #ff5252}
+.mic-dot.spin{background:var(--gold);animation:blink .7s infinite}
+.mic-result{margin-top:10px;padding:12px;border-radius:8px;font-size:12px;line-height:1.8}
+.mic-result.ok  {background:rgba(45,138,88,.15);border:1px solid rgba(45,138,88,.3);color:#7adba0}
+.mic-result.fail{background:rgba(160,40,40,.15);border:1px solid rgba(200,60,60,.3);color:#ffaaaa}
+.mic-result ol{padding-left:18px;margin-top:6px}
+.mic-result li{margin-bottom:6px}
+
+/* Sheet settings */
+.sheet-badge{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(45,138,88,.12);border:1px solid rgba(45,138,88,.3);border-radius:8px;margin-bottom:10px}
+.sbdot{width:8px;height:8px;border-radius:50%;background:#4caf50;box-shadow:0 0 6px #4caf50;flex-shrink:0}
+.sbinfo{flex:1;min-width:0}
+.sbname{display:block;font-size:12px;font-weight:700;color:var(--parchment);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sblink{font-size:10px;color:#7adba0;text-decoration:none}
+.sblink:hover{text-decoration:underline}
+.unlink-btn{background:none;border:none;color:var(--text-soft);font-size:18px;cursor:pointer;min-width:var(--tap);min-height:var(--tap);display:flex;align-items:center;justify-content:center;border-radius:4px}
+.unlink-btn:hover{color:#ff8080}
+.id-hint{font-size:10px;color:var(--text-soft);line-height:1.7;margin:6px 0 10px;padding:8px 10px;background:rgba(0,0,0,.18);border-radius:6px;border:1px solid rgba(255,255,255,.05)}
+.id-hint code{color:var(--gold-dim);word-break:break-all}
+.id-hint b{color:var(--gold)}
+.valid-msg{font-size:11px;padding:8px 10px;border-radius:6px;margin-top:8px;line-height:1.5;display:none}
+.valid-msg.ok   {background:rgba(45,138,88,.15);border:1px solid rgba(45,138,88,.3);color:#7adba0;display:block}
+.valid-msg.error{background:rgba(160,40,40,.15);border:1px solid rgba(200,60,60,.3);color:#ffaaaa;display:block}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:rgba(0,0,0,.2);border:1px solid rgba(201,168,76,.1);border-radius:8px;padding:10px;text-align:center}
+.stat-val{font-size:22px;font-weight:700;color:var(--gold);line-height:1}
+.stat-lbl{font-size:9px;letter-spacing:.12em;color:var(--text-soft);margin-top:3px}
+.divider{height:1px;background:var(--border);margin:14px 0}
+.sheet-link{display:block;margin-top:10px;padding:10px 12px;background:rgba(26,92,58,.2);border:1px solid rgba(45,138,88,.35);border-radius:8px;color:#7adba0;font-size:11px;text-decoration:none;word-break:break-all}
+
+/* Quran panel */
+.quran-panel{display:flex;flex-direction:column;min-height:60vh}
+@media(min-width:900px){.quran-panel{min-height:500px;height:calc(100vh - 160px);position:sticky;top:16px}}
+.quran-body{flex:1;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.prog-wrap{text-align:right}
+.prog-lbl{font-size:9px;letter-spacing:.1em;color:var(--text-soft);display:block;margin-bottom:4px}
+.prog-track{width:80px;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;width:0%;border-radius:2px;background:linear-gradient(90deg,var(--green-mid),var(--gold));transition:width .4s ease}
+.surah-meta{display:flex;flex-direction:column;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--border)}
+.surah-ar{font-family:'Scheherazade New',serif;font-size:clamp(18px,5vw,24px);color:var(--gold)}
+.surah-en{font-size:11px;color:var(--text-soft);margin-top:2px}
+.fs-btn{margin-left:10px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.25);color:var(--gold);border-radius:6px;min-width:36px;min-height:36px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .18s;flex-shrink:0;touch-action:manipulation}
+.fs-btn:hover{background:rgba(201,168,76,.22);border-color:var(--gold)}
+
+/* Mushaf */
+.ayah-list{display:block}
+.empty-state{text-align:center;padding:40px 20px;font-size:14px;color:var(--text-soft);line-height:2;direction:ltr}
+.empty-icon{font-size:36px;opacity:.35;margin-bottom:12px}
+.mushaf-page{
+  background:linear-gradient(160deg,rgba(250,246,220,.07) 0%,rgba(240,230,190,.03) 100%);
+  border:1px solid rgba(201,168,76,.18);border-radius:10px;
+  padding:14px 14px 18px;position:relative;
+}
+@media(min-width:480px){.mushaf-page{padding:20px 20px 24px}}
+@media(min-width:640px){.mushaf-page{padding:26px 26px 30px}}
+.mushaf-page::before,.mushaf-page::after{content:'✦';position:absolute;color:rgba(201,168,76,.3);font-size:10px}
+.mushaf-page::before{top:8px;right:12px}.mushaf-page::after{top:8px;left:12px}
+.mushaf-basmala{font-family:'Scheherazade New',serif;font-size:clamp(18px,5vw,28px);color:var(--gold);text-align:center;direction:rtl;line-height:2;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(201,168,76,.15);text-shadow:0 0 20px rgba(201,168,76,.3)}
+.mushaf-text{font-family:'Scheherazade New',serif;font-size:clamp(20px,5.5vw,32px);line-height:2.8;color:var(--parchment);direction:rtl;text-align:justify;word-spacing:.1em}
+@media(max-width:479px){.mushaf-text{font-size:clamp(18px,6vw,26px)}}
+.ayah-span{display:inline;transition:color .2s,background .2s,text-shadow .2s;padding:0 2px;border-radius:3px}
+.ayah-span.dim{opacity:.25}.ayah-span.in-range{opacity:1}
+.ayah-span.speaking{background:rgba(201,168,76,.25);color:#fff;text-shadow:0 0 16px rgba(201,168,76,.55);border-radius:4px;box-shadow:0 0 0 3px rgba(201,168,76,.2);padding:0 4px}
+.ayah-span.completed{color:#a8ddb8}
+.ayah-marker{display:inline;font-family:'Scheherazade New',serif;font-size:.68em;color:var(--gold);opacity:.8;margin:0 2px;vertical-align:middle;white-space:nowrap;transition:color .2s}
+.ayah-marker.dim{opacity:.22}.ayah-marker.speaking{color:var(--gold-light);opacity:1}.ayah-marker.completed{color:#6dc98a;opacity:.9}
+.mushaf-text.manual-mode .ayah-span.in-range{cursor:pointer;padding:2px 4px;border-radius:4px;transition:background .15s}
+.mushaf-text.manual-mode .ayah-span.in-range:hover,.mushaf-text.manual-mode .ayah-span.in-range:active{background:rgba(201,168,76,.18)}
+
+/* Recitation bar */
+.rec-bar{flex-shrink:0;border-top:1px solid var(--border);background:rgba(0,0,0,.3);padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mode-toggle{display:flex;gap:3px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:3px;flex-shrink:0}
+.mode-btn{min-height:36px;padding:6px 12px;border-radius:6px;border:none;background:transparent;color:var(--text-soft);font-family:'Lato',sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;cursor:pointer;transition:all .18s;text-transform:uppercase;white-space:nowrap;touch-action:manipulation}
+.mode-btn:hover{color:var(--parchment);background:rgba(255,255,255,.06)}
+.mode-btn.active{background:linear-gradient(135deg,var(--green),var(--green-mid));color:#fff;box-shadow:0 2px 8px rgba(26,92,58,.4)}
+.rec-controls{flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.alert-inline{background:rgba(160,40,40,.18);border:1px solid rgba(200,60,60,.3);color:#ffaaaa;border-radius:6px;padding:6px 10px;font-size:11px;line-height:1.4;width:100%}
+.waveform{display:flex;align-items:center;gap:3px;height:22px;margin:0;flex-shrink:0}
+.bar{display:inline-block;width:3px;height:4px;border-radius:2px;background:var(--gold);opacity:.25}
+.waveform.live .bar{opacity:.75;animation:wave .75s ease-in-out infinite}
+.waveform.live .bar:nth-child(1){animation-delay:0s}.waveform.live .bar:nth-child(2){animation-delay:.10s}
+.waveform.live .bar:nth-child(3){animation-delay:.20s}.waveform.live .bar:nth-child(4){animation-delay:.15s}
+.waveform.live .bar:nth-child(5){animation-delay:.05s}.waveform.live .bar:nth-child(6){animation-delay:.22s}
+.waveform.live .bar:nth-child(7){animation-delay:.12s}
+@keyframes wave{0%,100%{height:4px}50%{height:20px}}
+.rec-status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-soft);flex-shrink:0}
+.dot{width:8px;height:8px;border-radius:50%;background:#555;flex-shrink:0;transition:background .3s}
+.dot.listening{background:#4caf50;box-shadow:0 0 7px #4caf50;animation:blink 1.1s infinite}
+.dot.done{background:#5c9aff}.dot.error{background:#ff5252}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.status-txt{font-size:11px}
+.rec-btns{display:flex;gap:6px;flex-shrink:0}
+.rec-btn{width:auto!important;min-height:38px!important;padding:6px 14px!important;font-size:11px!important;letter-spacing:.08em;touch-action:manipulation}
+.txbox{flex:1;min-width:80px;max-width:240px;min-height:30px;max-height:42px;overflow-y:auto;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:5px 8px;font-size:13px;font-style:italic;color:rgba(255,255,255,.55);direction:rtl;text-align:right;font-family:'Scheherazade New',serif;-webkit-overflow-scrolling:touch}
+.txbox:empty::before{content:'Transcript…';opacity:.3;font-style:italic;font-family:'Lato',sans-serif;font-size:10px;direction:ltr}
+@media(max-width:479px){.txbox{max-width:100%;flex-basis:100%;order:10}.rec-btn{padding:6px 10px!important;font-size:10px!important}.mode-btn{padding:6px 10px;font-size:10px}}
+
+/* Manual controls */
+.man-cur{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.man-lbl{font-size:9px;font-weight:700;letter-spacing:.14em;color:var(--gold-dim)}
+.man-num{font-family:'Scheherazade New',serif;font-size:20px;color:var(--gold);line-height:1}
+.man-prog{font-size:10px;color:var(--text-soft);white-space:nowrap}
+.man-nav{display:flex;gap:6px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+
+/* Fullscreen */
+.quran-panel.fullscreen{position:fixed!important;inset:0!important;z-index:1000!important;border-radius:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;display:flex!important;flex-direction:column;background:var(--ink)!important;border:none!important}
+.quran-panel.fullscreen .quran-body{flex:1;overflow-y:auto;padding:14px 14px 0;min-height:0;-webkit-overflow-scrolling:touch}
+@media(min-width:640px){.quran-panel.fullscreen .quran-body{padding:20px 36px 0}}
+@media(min-width:900px){.quran-panel.fullscreen .quran-body{padding:24px 60px 0}}
+.quran-panel.fullscreen .rec-bar{flex-shrink:0;padding:10px 14px;background:rgba(0,0,0,.55);border-top:1px solid rgba(201,168,76,.25);backdrop-filter:blur(10px);gap:10px}
+@media(min-width:640px){.quran-panel.fullscreen .rec-bar{padding:12px 28px;gap:14px}}
+.quran-panel.fullscreen .mushaf-text{font-size:clamp(22px,5vw,46px)!important;line-height:3!important}
+.quran-panel.fullscreen .mushaf-page{padding:16px 14px 20px}
+@media(min-width:640px){.quran-panel.fullscreen .mushaf-page{padding:26px 28px 32px}}
+@media(min-width:900px){.quran-panel.fullscreen .mushaf-page{padding:36px 48px 48px}}
+.quran-panel.fullscreen .card-head{padding:11px 14px;border-radius:0}
+body.has-fullscreen{overflow:hidden}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);padding:11px 20px;background:rgba(22,80,48,.97);border:1px solid var(--green-mid);border-radius:40px;color:#fff;font-size:12px;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.4);backdrop-filter:blur(10px);transition:transform .3s cubic-bezier(.4,0,.2,1);z-index:9999;max-width:calc(100vw - 32px);text-align:center;white-space:normal;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.spin{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin .65s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <!-- Header -->
+  <header class="header">
+    <div class="bismillah">بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ</div>
+    <div class="subtitle">✦ Quran Recitation Listener ✦</div>
+  </header>
+
+  <!-- Setup banner — hidden after API URL is saved -->
+  <div id="setupBanner" class="setup-banner">
+    <h3>⚙️ One-time Setup Required</h3>
+    <p>Paste your Apps Script deployment URL below. Get it from:<br>
+    <strong>Apps Script → Deploy → Manage deployments → Web app URL</strong></p>
+    <code id="urlExample">https://script.google.com/macros/s/YOUR_ID/exec</code>
+    <input type="text" id="apiUrlInput" placeholder="Paste your /exec URL here…">
+    <button class="btn btn-gold" onclick="saveApiUrl()" style="max-width:200px">💾 SAVE URL</button>
+  </div>
+
+  <div class="main-grid">
+    <aside class="left-col">
+
+      <!-- SELECT RANGE -->
+      <section class="card">
+        <div class="card-head"><span class="card-icon">📖</span><span class="card-title">SELECT RANGE</span></div>
+        <div class="card-body">
+          <div class="field">
+            <label class="lbl">SURAH</label>
+            <div class="sel-wrap">
+              <select id="surahSel" onchange="onSurahChange()">
+                <option value="">— Choose Surah —</option>
+              </select>
+              <span class="sel-arr">▾</span>
+            </div>
+          </div>
+          <div id="surahMsg" class="loading-note" style="display:none">⏳ Loading all 114 surahs…</div>
+          <div class="field-row">
+            <div class="field"><label class="lbl">START AYAH</label><input type="number" id="startAyah" min="1" value="1"></div>
+            <div class="field"><label class="lbl">END AYAH</label><input type="number" id="endAyah" min="1" value="7"></div>
+          </div>
+          <button class="btn btn-green" id="loadBtn" onclick="loadSel()" disabled>✦ LOAD AYAHS</button>
+        </div>
+      </section>
+
+      <!-- MIC TEST -->
+      <section class="card">
+        <div class="card-head"><span class="card-icon">🔬</span><span class="card-title">MIC TEST</span></div>
+        <div class="card-body">
+          <div class="mic-status">
+            <span class="mic-dot" id="micDot"></span>
+            <span id="micLbl">Not tested yet</span>
+          </div>
+          <button class="btn btn-outline" id="micBtn" onclick="testMic()" style="margin-top:10px">🔬 TEST MICROPHONE</button>
+          <div id="micRes" class="mic-result" style="display:none"></div>
+        </div>
+      </section>
+
+      <!-- SHEET SETTINGS -->
+      <section class="card">
+        <div class="card-head"><span class="card-icon">🔗</span><span class="card-title">SHEET SETTINGS</span></div>
+        <div class="card-body">
+          <div id="sheetConnected" style="display:none">
+            <div class="sheet-badge">
+              <span class="sbdot"></span>
+              <div class="sbinfo">
+                <span class="sbname" id="sbName"></span>
+                <a class="sblink" id="sbLink" href="#" target="_blank">Open Sheet ↗</a>
+              </div>
+              <button class="unlink-btn" onclick="unlinkSheet()">✕</button>
+            </div>
+          </div>
+          <div id="sheetForm">
+            <div class="field">
+              <label class="lbl">GOOGLE SHEET ID</label>
+              <input type="text" id="sheetIdIn" placeholder="Paste Sheet ID here…" style="font-size:12px">
+            </div>
+            <div class="id-hint">Find in Sheet URL:<br><code>…/spreadsheets/d/<b>SHEET_ID</b>/edit</code></div>
+            <div id="validMsg" class="valid-msg"></div>
+            <div class="field-row" style="margin-top:10px;margin-bottom:0">
+              <button class="btn btn-outline" id="valBtn" onclick="valSheet()">✓ VALIDATE</button>
+              <button class="btn btn-gold"    id="saveShBtn" onclick="saveSheetCfg()" disabled>💾 SAVE</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SESSION STATS -->
+      <section class="card">
+        <div class="card-head"><span class="card-icon">📊</span><span class="card-title">SESSION STATS</span></div>
+        <div class="card-body">
+          <div class="stats-grid">
+            <div class="stat"><div class="stat-val" id="sAcc">–</div><div class="stat-lbl">ACCURACY</div></div>
+            <div class="stat"><div class="stat-val" id="sAyh">0/0</div><div class="stat-lbl">AYAHS</div></div>
+            <div class="stat"><div class="stat-val" id="sDur">0s</div><div class="stat-lbl">DURATION</div></div>
+            <div class="stat"><div class="stat-val" id="sWrd">0</div><div class="stat-lbl">WORDS</div></div>
+          </div>
+          <div class="divider"></div>
+          <button class="btn btn-gold"    onclick="genSheet()">📊 GENERATE &amp; SAVE SHEET</button>
+          <button class="btn btn-outline" onclick="resetSess()" style="margin-top:8px">↺ RESET</button>
+          <div id="sheetResult"></div>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- QURAN PANEL -->
+    <main class="quran-panel card" id="qPanel">
+      <div class="card-head">
+        <span class="card-icon">☽</span>
+        <span class="card-title">QURAN TEXT</span>
+        <div class="prog-wrap" style="margin-left:auto">
+          <span class="prog-lbl" id="progLbl">0 / 0 AYAHS</span>
+          <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+        </div>
+        <button class="fs-btn" id="fsBtn" onclick="toggleFS()" title="Fullscreen">⛶</button>
+      </div>
+
+      <!-- Quran text -->
+      <div class="quran-body card-body" id="quranBody">
+        <div id="surahMeta" class="surah-meta" style="display:none">
+          <span class="surah-ar" id="surahAr"></span>
+          <span class="surah-en" id="surahEn"></span>
+        </div>
+        <div id="ayahList" class="ayah-list">
+          <div class="empty-state"><div class="empty-icon">📖</div>Select a Surah and range, then click <strong>Load Ayahs</strong>.</div>
+        </div>
+      </div>
+
+      <!-- Recitation bar -->
+      <div class="rec-bar" id="recBar">
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="modeAuto"   onclick="setMode('auto')">🎙 Auto</button>
+          <button class="mode-btn"        id="modeManual" onclick="setMode('manual')">👆 Manual</button>
+        </div>
+
+        <!-- Auto mode -->
+        <div id="autoMode" class="rec-controls">
+          <div id="noSpeechMsg" class="alert-inline" style="display:none"></div>
+          <div class="waveform" id="waveform">
+            <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            <span class="bar"></span>
+          </div>
+          <div class="rec-status">
+            <span class="dot" id="statusDot"></span>
+            <span class="status-txt" id="statusTxt">Load Ayahs to begin</span>
+          </div>
+          <div class="rec-btns">
+            <button class="btn btn-green rec-btn" id="startBtn" onclick="startListen()" disabled>🎙 START</button>
+            <button class="btn btn-red   rec-btn" id="stopBtn"  onclick="stopListen()"  style="display:none">⏹ STOP</button>
+          </div>
+          <div class="txbox" id="txBox"></div>
+        </div>
+
+        <!-- Manual mode -->
+        <div id="manualMode" class="rec-controls" style="display:none">
+          <div class="man-cur">
+            <span class="man-lbl">AYAH</span>
+            <span class="man-num" id="manNum">—</span>
+            <span class="man-prog" id="manProg">0 / 0 marked</span>
+          </div>
+          <div class="man-nav">
+            <button class="btn btn-outline rec-btn" onclick="manPrev()"     id="prevBtn"   disabled>◀</button>
+            <button class="btn btn-outline rec-btn" onclick="manMark()"     id="doneBtn"   disabled>✓ DONE</button>
+            <button class="btn btn-green   rec-btn" onclick="manNext()"     id="nextBtn"   disabled>▶</button>
+            <button class="btn btn-gold    rec-btn" onclick="manSave()"     id="manSaveBtn" disabled>💾</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   Quran Recitation Listener — GitHub Pages JS
+   Calls Apps Script /exec API via fetch()
+   Microphone works perfectly here (no iframe sandbox)
+═══════════════════════════════════════════════════════ */
+
+// ── Config ────────────────────────────────────────────
+var API_URL_KEY = 'quran_api_url';
+var apiUrl      = localStorage.getItem(API_URL_KEY) || '';
+
+// ── State ─────────────────────────────────────────────
+var surahList   = [];
+var curSurah    = null;
+var selAyahs    = [];
+var curIdx      = 0;
+var doneCount   = 0;
+var wordCount   = 0;
+var recognition = null;
+var isListening = false;
+var sessStart   = null;
+var timerRef    = null;
+var sheetId     = null;
+var sheetUrl    = null;
+var pendingShId = null;
+var isFS        = false;
+var curMode     = 'auto';
+var manDone     = [];
+var _toast;
+
+// ── Boot ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  if (apiUrl) {
+    document.getElementById('setupBanner').style.display = 'none';
+    document.getElementById('apiUrlInput').value = apiUrl;
+    init();
+  } else {
+    document.getElementById('surahMsg').style.display = 'block';
+    document.getElementById('surahMsg').textContent = '⚠️ Save your Apps Script URL first (see setup above).';
+  }
+  checkMicSupport();
+});
+
+function saveApiUrl() {
+  var v = document.getElementById('apiUrlInput').value.trim();
+  if (!v || !v.includes('script.google.com')) {
+    toast('Please enter a valid Apps Script /exec URL', 'error'); return;
+  }
+  localStorage.setItem(API_URL_KEY, v);
+  apiUrl = v;
+  document.getElementById('setupBanner').style.display = 'none';
+  toast('API URL saved!');
+  init();
+}
+
+function init() {
+  loadSurahList();
+  loadSheetCfg();
+}
+
+// ── API helper ────────────────────────────────────────
+function api(params) {
+  if (!apiUrl) {
+    return Promise.reject(new Error('No API URL configured. Complete setup above.'));
+  }
+  var url = apiUrl + '?' + Object.keys(params).map(function(k) {
+    return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+  }).join('&');
+  return fetch(url).then(function(r) { return r.json(); });
+}
+
+// ── Surah list ────────────────────────────────────────
+function loadSurahList() {
+  var msg = document.getElementById('surahMsg');
+  msg.style.display = 'block';
+  msg.textContent   = '⏳ Loading all 114 surahs…';
+
+  api({ action: 'getSurahList' })
+    .then(function(r) {
+      surahList = r.surahs || [];
+      var sel   = document.getElementById('surahSel');
+      sel.innerHTML = '<option value="">— Choose Surah —</option>';
+      surahList.forEach(function(s) {
+        var o = document.createElement('option');
+        o.value       = s.number;
+        o.textContent = s.number + '. ' + s.name + ' — ' + s.arabicName + ' (' + s.totalAyahs + ')';
+        sel.appendChild(o);
+      });
+      msg.style.display = 'none';
+      if (!r.ok) toast('API offline — showing ' + surahList.length + ' surahs', 'error');
+    })
+    .catch(function(e) {
+      msg.textContent = '⚠️ ' + e.message;
+      toast('Failed to load surahs: ' + e.message, 'error');
+    });
+}
+
+function onSurahChange() {
+  var num = parseInt(document.getElementById('surahSel').value, 10);
+  if (!num) return;
+  var s = surahList.find(function(x) { return x.number === num; });
+  if (s) {
+    document.getElementById('endAyah').max   = s.totalAyahs;
+    document.getElementById('endAyah').value = s.totalAyahs;
+    document.getElementById('startAyah').max = s.totalAyahs;
+  }
+  document.getElementById('loadBtn').disabled = false;
+}
+
+function loadSel() {
+  var num = parseInt(document.getElementById('surahSel').value, 10);
+  if (!num) { toast('Select a Surah first'); return; }
+
+  var btn = document.getElementById('loadBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>&nbsp;Loading…';
+
+  api({ action: 'getSurahDetail', number: num })
+    .then(function(r) {
+      btn.disabled = false;
+      btn.textContent = '✦ LOAD AYAHS';
+      if (!r.ok) { toast(r.error || 'Load failed', 'error'); return; }
+
+      curSurah = r;
+      var s = Math.max(1, parseInt(document.getElementById('startAyah').value, 10) || 1);
+      var e = parseInt(document.getElementById('endAyah').value, 10) || r.totalAyahs;
+      e = Math.min(Math.max(s, e), r.totalAyahs);
+      s = Math.min(s, r.totalAyahs);
+      document.getElementById('startAyah').value = s;
+      document.getElementById('endAyah').value   = e;
+
+      selAyahs = r.ayahs.filter(function(a) { return a.n >= s && a.n <= e; });
+      curIdx = 0; doneCount = 0; wordCount = 0; manDone = [];
+      renderQuran(s, e);
+      resetStats();
+      document.getElementById('startBtn').disabled = false;
+      toast('Loaded ' + selAyahs.length + ' ayahs from ' + r.name);
+    })
+    .catch(function(e) {
+      btn.disabled = false;
+      btn.textContent = '✦ LOAD AYAHS';
+      toast('Error: ' + e.message, 'error');
+    });
+}
+
+// ── Render Quran (Mushaf style) ───────────────────────
+function renderQuran(s, e) {
+  document.getElementById('surahMeta').style.display = 'flex';
+  document.getElementById('surahAr').textContent = curSurah.arabicName;
+  document.getElementById('surahEn').textContent = 'Surah ' + curSurah.name + ' • Ayahs ' + s + '–' + e;
+
+  var list = document.getElementById('ayahList');
+  list.innerHTML = '';
+  var page = document.createElement('div');
+  page.className = 'mushaf-page';
+
+  if (curSurah.number !== 1 && curSurah.number !== 9) {
+    var bsm = document.createElement('div');
+    bsm.className   = 'mushaf-basmala';
+    bsm.textContent = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ';
+    page.appendChild(bsm);
+  }
+
+  var wrap = document.createElement('div');
+  wrap.className = 'mushaf-text';
+
+  curSurah.ayahs.forEach(function(ayah) {
+    var inR  = ayah.n >= s && ayah.n <= e;
+    var span = document.createElement('span');
+    span.id        = 'ay-' + ayah.n;
+    span.className = 'ayah-span ' + (inR ? 'in-range' : 'dim');
+    span.textContent = ayah.ar + ' ';
+    if (inR) {
+      span.style.cursor = 'pointer';
+      span.onclick = function() { if (curMode === 'manual') manTap(ayah.n); };
+    }
+    var mk = document.createElement('span');
+    mk.className   = 'ayah-marker' + (inR ? '' : ' dim');
+    mk.textContent = '﴿' + toAr(ayah.n) + '﴾';
+
+    wrap.appendChild(span);
+    wrap.appendChild(mk);
+    wrap.appendChild(document.createTextNode(' '));
+  });
+
+  page.appendChild(wrap);
+  list.appendChild(page);
+  updateProg(0);
+
+  // Enable manual buttons
+  document.getElementById('prevBtn').disabled  = true;
+  document.getElementById('nextBtn').disabled  = (selAyahs.length <= 1);
+  document.getElementById('doneBtn').disabled  = false;
+  document.getElementById('manSaveBtn').disabled = true;
+
+  if (curMode === 'manual') {
+    wrap.classList.add('manual-mode');
+    updateManUI();
+    hlCurrent();
+  }
+}
+
+function toAr(n) {
+  return String(n).replace(/[0-9]/g, function(d) { return '٠١٢٣٤٥٦٧٨٩'[+d]; });
+}
+
+// ── Speech recognition ────────────────────────────────
+function checkMicSupport() {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    showEl('noSpeechMsg', '⚠️ Speech recognition requires Chrome or Edge.');
+    return;
+  }
+  if (navigator.permissions) {
+    navigator.permissions.query({ name: 'microphone' })
+      .then(function(r) {
+        if (r.state === 'denied')
+          showEl('noSpeechMsg', '⚠️ Mic blocked. Tap the lock icon in address bar → Microphone → Allow → Reload.');
+      }).catch(function() {});
+  }
+}
+
+function startListen() {
+  if (!selAyahs.length) { toast('Load Ayahs first'); return; }
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { toast('Use Chrome or Edge', 'error'); return; }
+  if (isListening) return;
+
+  recognition = new SR();
+  recognition.continuous      = true;
+  recognition.interimResults  = true;
+  recognition.lang            = 'ar-SA';
+  recognition.maxAlternatives = 3;
+
+  curIdx = 0; doneCount = 0; wordCount = 0;
+  sessStart = Date.now();
+  startTimer();
+  hlCurrent();
+
+  recognition.onstart = function() {
+    isListening = true;
+    setStatus('listening', 'Listening…');
+    document.getElementById('startBtn').style.display = 'none';
+    document.getElementById('stopBtn').style.display  = 'flex';
+    document.getElementById('waveform').classList.add('live');
+    toast('Listening started');
+  };
+
+  recognition.onresult = function(ev) {
+    var interim = '', final = '';
+    for (var i = ev.resultIndex; i < ev.results.length; i++) {
+      var t = ev.results[i][0].transcript;
+      if (ev.results[i].isFinal) final += t; else interim += t;
+    }
+    document.getElementById('txBox').textContent = final || interim;
+    if (final) {
+      wordCount += final.trim().split(/\s+/).length;
+      document.getElementById('sWrd').textContent = wordCount;
+      checkMatch(final);
+    }
+  };
+
+  recognition.onerror = function(ev) {
+    if (ev.error === 'no-speech') return;
+    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+      isListening = false;
+      setStatus('error', 'Mic blocked');
+      showEl('noSpeechMsg', '⚠️ Mic blocked. Click the lock icon in address bar → Microphone → Allow → Reload.');
+      document.getElementById('startBtn').style.display = 'flex';
+      document.getElementById('stopBtn').style.display  = 'none';
+      document.getElementById('waveform').classList.remove('live');
+      clearInterval(timerRef);
+    } else {
+      setStatus('error', ev.error);
+      toast('Error: ' + ev.error, 'error');
+    }
+  };
+
+  recognition.onend = function() {
+    if (isListening) { try { recognition.start(); } catch(e) {} }
+  };
+
+  try { recognition.start(); }
+  catch(e) { toast('Could not start: ' + e.message, 'error'); }
+}
+
+function stopListen() {
+  isListening = false;
+  if (recognition) { recognition.onend = null; try { recognition.stop(); } catch(e) {} }
+  clearInterval(timerRef);
+  setStatus('done', 'Session ended — saving…');
+  document.getElementById('startBtn').style.display = 'flex';
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('stopBtn').style.display  = 'none';
+  document.getElementById('waveform').classList.remove('live');
+  var acc = selAyahs.length ? Math.round(doneCount / selAyahs.length * 100) : 0;
+  document.getElementById('sAcc').textContent = acc + '%';
+  autoSave(acc);
+}
+
+function checkMatch(transcript) {
+  if (curIdx >= selAyahs.length) return;
+  function strip(s) {
+    return s.replace(/[\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]/g, '').replace(/\s+/g, ' ').trim();
+  }
+  var aW = strip(selAyahs[curIdx].ar).split(' ');
+  var tW = strip(transcript).split(' ');
+  var m  = 0;
+  aW.forEach(function(w) {
+    if (tW.some(function(t) { return t === w || t.indexOf(w) !== -1 || w.indexOf(t) !== -1; })) m++;
+  });
+  if (aW.length && m / aW.length >= 0.4) {
+    markAyahDone(curIdx);
+    curIdx++; doneCount++;
+    document.getElementById('sAyh').textContent = doneCount + '/' + selAyahs.length;
+    updateProg(doneCount);
+    if (curIdx < selAyahs.length) {
+      hlCurrent();
+    } else {
+      setStatus('done', 'All ayahs completed 🎉');
+      toast('Mashallah! All ayahs completed 🎉');
+      stopListen();
+    }
+  }
+}
+
+function hlCurrent() {
+  document.querySelectorAll('.ayah-span.speaking').forEach(function(el) { el.classList.remove('speaking'); });
+  document.querySelectorAll('.ayah-marker.speaking').forEach(function(el) { el.classList.remove('speaking'); });
+  var idx = (curMode === 'manual') ? curIdx : curIdx;
+  if (idx < selAyahs.length) {
+    var span = document.getElementById('ay-' + selAyahs[idx].n);
+    if (span) {
+      span.classList.add('speaking');
+      var mk = span.nextSibling;
+      if (mk && mk.classList && mk.classList.contains('ayah-marker')) mk.classList.add('speaking');
+      setTimeout(function() { span.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80);
+    }
+  }
+}
+
+function markAyahDone(idx) {
+  var span = document.getElementById('ay-' + selAyahs[idx].n);
+  if (span) {
+    span.classList.remove('speaking'); span.classList.add('completed');
+    var mk = span.nextSibling;
+    if (mk && mk.classList && mk.classList.contains('ayah-marker')) {
+      mk.classList.remove('speaking'); mk.classList.add('completed');
+    }
+  }
+}
+
+// ── Timer ─────────────────────────────────────────────
+function startTimer() {
+  timerRef = setInterval(function() {
+    document.getElementById('sDur').textContent = Math.floor((Date.now() - sessStart) / 1000) + 's';
+  }, 500);
+}
+
+function updateProg(done) {
+  var total = selAyahs.length;
+  document.getElementById('progLbl').textContent = done + ' / ' + total + ' AYAHS';
+  document.getElementById('progFill').style.width = (total ? done / total * 100 : 0) + '%';
+}
+
+function resetStats() {
+  curIdx = 0; doneCount = 0; wordCount = 0; manDone = [];
+  document.getElementById('sAcc').textContent = '–';
+  document.getElementById('sAyh').textContent = '0/' + selAyahs.length;
+  document.getElementById('sDur').textContent = '0s';
+  document.getElementById('sWrd').textContent = '0';
+  document.getElementById('txBox').textContent = '';
+  var mp = document.getElementById('manProg'); if (mp) mp.textContent = '0 / ' + selAyahs.length + ' marked';
+  var mn = document.getElementById('manNum');  if (mn) mn.textContent = '—';
+  updateProg(0);
+}
+
+function resetSess() {
+  stopListen();
+  if (selAyahs.length && curSurah) {
+    renderQuran(parseInt(document.getElementById('startAyah').value, 10),
+                parseInt(document.getElementById('endAyah').value, 10));
+  }
+  resetStats();
+  setStatus('', 'Click Start — Chrome will ask for mic access');
+  toast('Session reset');
+}
+
+function setStatus(cls, msg) {
+  document.getElementById('statusDot').className = 'dot ' + cls;
+  document.getElementById('statusTxt').textContent = msg;
+}
+
+function showEl(id, text) {
+  var el = document.getElementById(id);
+  if (text !== undefined) el.textContent = text;
+  el.style.display = 'block';
+}
+
+// ── Mode toggle ───────────────────────────────────────
+function setMode(mode) {
+  curMode = mode;
+  document.getElementById('modeAuto').classList.toggle('active', mode === 'auto');
+  document.getElementById('modeManual').classList.toggle('active', mode === 'manual');
+  document.getElementById('autoMode').style.display   = mode === 'auto'   ? 'flex' : 'none';
+  document.getElementById('manualMode').style.display = mode === 'manual' ? 'flex' : 'none';
+  if (mode === 'manual' && isListening) stopListen();
+  var mText = document.querySelector('.mushaf-text');
+  if (mText) {
+    if (mode === 'manual') mText.classList.add('manual-mode');
+    else mText.classList.remove('manual-mode');
+  }
+  if (mode === 'manual' && selAyahs.length) {
+    manDone = []; curIdx = 0;
+    updateManUI(); hlCurrent();
+  }
+}
+
+// ── Manual navigation ─────────────────────────────────
+function updateManUI() {
+  var total = selAyahs.length;
+  if (!total) return;
+  document.getElementById('manNum').textContent  = toAr(selAyahs[curIdx].n) + ' / ' + toAr(total);
+  document.getElementById('manProg').textContent = manDone.length + ' / ' + total + ' marked';
+  document.getElementById('prevBtn').disabled   = (curIdx === 0);
+  document.getElementById('nextBtn').disabled   = (curIdx >= total - 1);
+  document.getElementById('doneBtn').disabled   = (manDone.indexOf(curIdx) !== -1);
+  document.getElementById('manSaveBtn').disabled = (manDone.length === 0);
+  document.getElementById('sAyh').textContent   = manDone.length + '/' + total;
+  updateProg(manDone.length);
+  document.getElementById('sAcc').textContent   = (total ? Math.round(manDone.length / total * 100) : 0) + '%';
+}
+
+function manNext() { if (curIdx < selAyahs.length - 1) { curIdx++; updateManUI(); hlCurrent(); } }
+function manPrev() { if (curIdx > 0) { curIdx--; updateManUI(); hlCurrent(); } }
+
+function manMark() {
+  if (manDone.indexOf(curIdx) === -1) { manDone.push(curIdx); markAyahDone(curIdx); }
+  updateManUI();
+  var next = -1;
+  for (var i = curIdx + 1; i < selAyahs.length; i++) {
+    if (manDone.indexOf(i) === -1) { next = i; break; }
+  }
+  if (next !== -1) { curIdx = next; hlCurrent(); }
+  else if (manDone.length === selAyahs.length) { toast('Mashallah! All ayahs marked 🎉'); setStatus('done', 'All marked 🎉'); }
+  updateManUI();
+}
+
+function manTap(n) {
+  var idx = selAyahs.findIndex ? selAyahs.findIndex(function(a) { return a.n === n; }) : -1;
+  if (idx === -1) for (var i=0;i<selAyahs.length;i++) if (selAyahs[i].n===n){idx=i;break;}
+  if (idx !== -1) { curIdx = idx; updateManUI(); hlCurrent(); }
+}
+
+function manSave() {
+  var acc = selAyahs.length ? Math.round(manDone.length / selAyahs.length * 100) : 0;
+  document.getElementById('sAcc').textContent = acc + '%';
+  autoSave(acc);
+}
+
+// ── Auto-save session ─────────────────────────────────
+function autoSave(acc) {
+  if (!curSurah || !selAyahs.length) { setStatus('done','Session ended'); return; }
+  var dur     = sessStart ? Math.floor((Date.now() - sessStart) / 1000) : 0;
+  var payload = JSON.stringify({
+    sheetId:     sheetId || '',
+    surahName:   curSurah.name,
+    surahNumber: curSurah.number,
+    startAyah:   parseInt(document.getElementById('startAyah').value, 10),
+    endAyah:     parseInt(document.getElementById('endAyah').value, 10),
+    duration:    dur, accuracy: acc,
+    ayahsDone:   doneCount || manDone.length,
+    totalAyahs:  selAyahs.length,
+    status:      (doneCount >= selAyahs.length || manDone.length >= selAyahs.length) ? 'Completed' : 'Partial',
+    notes: ''
+  });
+  api({ action: 'saveSession', data: payload })
+    .then(function(r) {
+      if (r.ok) {
+        if (r.sheetId) sheetId = r.sheetId;
+        if (r.url) sheetUrl = r.url;
+        setStatus('done', 'Saved — ' + r.sessionId);
+        toast('Session saved ✓ (' + r.sessionId + ')');
+        document.getElementById('sheetResult').innerHTML =
+          '<a class="sheet-link" href="' + r.url + '" target="_blank">✓ View in Sheet →</a>';
+        if (r.sheetId) _applyBadge(r.sheetId, 'Your Recitation Sheet', r.url);
+      } else {
+        setStatus('done', 'Saved (sheet error)');
+        toast('Save error: ' + r.error, 'error');
+      }
+    })
+    .catch(function(e) { setStatus('done','Session ended'); toast('Save failed: ' + e.message,'error'); });
+}
+
+// ── Generate sheet ────────────────────────────────────
+function genSheet() {
+  var btn = event.currentTarget;
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span>&nbsp;Generating…';
+  api({ action: 'generateSheet' })
+    .then(function(r) {
+      btn.disabled = false; btn.innerHTML = '📊 GENERATE &amp; SAVE SHEET';
+      if (!r.ok) { toast('Error: ' + r.error, 'error'); return; }
+      sheetId = r.id; sheetUrl = r.url;
+      _applyBadge(r.id, r.title, r.url);
+      document.getElementById('sheetResult').innerHTML =
+        '<a class="sheet-link" href="' + r.url + '" target="_blank">✓ ' + r.title + ' — Open →</a>';
+      toast('Sheet ready!');
+    })
+    .catch(function(e) { btn.disabled=false; btn.innerHTML='📊 GENERATE &amp; SAVE SHEET'; toast('Failed: '+e.message,'error'); });
+}
+
+// ── Sheet config ──────────────────────────────────────
+function loadSheetCfg() {
+  api({ action: 'getSheetConfig' })
+    .then(function(r) {
+      if (r.id) _applyBadge(r.id, r.title, r.url);
+      if (r.warning) toast(r.warning, 'error');
+    }).catch(function() {});
+}
+
+function valSheet() {
+  var id = document.getElementById('sheetIdIn').value.trim();
+  if (!id) { _setValidMsg('Enter a Sheet ID first.', 'error'); return; }
+  var btn = document.getElementById('valBtn');
+  btn.disabled = true; btn.textContent = '…';
+  api({ action: 'validateSheetId', id: id })
+    .then(function(r) {
+      btn.disabled = false; btn.textContent = '✓ VALIDATE';
+      if (!r.ok) { _setValidMsg('✕ ' + r.error, 'error'); pendingShId = null; document.getElementById('saveShBtn').disabled = true; return; }
+      pendingShId = r.id;
+      _setValidMsg('✓ <strong>' + r.title + '</strong>' + (r.hasSessions ? '' : ' (Sessions tab will be created)'), 'ok');
+      document.getElementById('saveShBtn').disabled = false;
+    }).catch(function(e) { btn.disabled=false; btn.textContent='✓ VALIDATE'; _setValidMsg('Error: '+e.message,'error'); });
+}
+
+function saveSheetCfg() {
+  if (!pendingShId) { _setValidMsg('Validate first.','error'); return; }
+  var btn = document.getElementById('saveShBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+  api({ action: 'saveSheetId', id: pendingShId })
+    .then(function(r) {
+      btn.disabled=false; btn.innerHTML='💾 SAVE';
+      if (!r.ok) { _setValidMsg('Save failed: '+r.error,'error'); return; }
+      _applyBadge(r.id, r.title, r.url);
+      sheetId=r.id; sheetUrl=r.url;
+      toast('Sheet saved — sessions go here automatically');
+    }).catch(function(e) { btn.disabled=false; btn.innerHTML='💾 SAVE'; _setValidMsg('Error: '+e.message,'error'); });
+}
+
+function unlinkSheet() {
+  api({ action: 'clearSheetId' }).then(function() {
+    sheetId=null; sheetUrl=null; pendingShId=null;
+    document.getElementById('sheetConnected').style.display='none';
+    document.getElementById('sheetForm').style.display='block';
+    document.getElementById('sheetIdIn').value='';
+    document.getElementById('saveShBtn').disabled=true;
+    _setValidMsg('','');
+    toast('Sheet unlinked');
+  }).catch(function() { toast('Unlink failed','error'); });
+}
+
+function _applyBadge(id, title, url) {
+  sheetId=id; sheetUrl=url;
+  document.getElementById('sbName').textContent=title;
+  document.getElementById('sbLink').href=url;
+  document.getElementById('sheetConnected').style.display='block';
+  document.getElementById('sheetForm').style.display='none';
+  _setValidMsg('','');
+}
+
+function _setValidMsg(html, type) {
+  var el=document.getElementById('validMsg');
+  if (!html){el.className='valid-msg';el.innerHTML='';return;}
+  el.className='valid-msg '+type; el.innerHTML=html;
+}
+
+// ── Mic test ──────────────────────────────────────────
+function testMic() {
+  var btn=document.getElementById('micBtn');
+  var dot=document.getElementById('micDot');
+  var lbl=document.getElementById('micLbl');
+  var res=document.getElementById('micRes');
+
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>&nbsp;Testing…';
+  dot.className='mic-dot spin'; lbl.textContent='Testing…'; res.style.display='none';
+
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    _micFail(btn,dot,lbl,res,'No SpeechRecognition API.',['Use Chrome or Edge browser.']); return;
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    _micStartSR(btn,dot,lbl,res,SR); return;
+  }
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(function(stream) {
+      stream.getTracks().forEach(function(t) { t.stop(); });
+      _micStartSR(btn,dot,lbl,res,SR);
+    })
+    .catch(function(err) {
+      var n = err.name || '';
+      if (n==='NotAllowedError'||n==='PermissionDeniedError')
+        _micFail(btn,dot,lbl,res,'Microphone permission DENIED.',['Tap the lock icon in address bar.','Set Microphone to Allow.','Reload page and test again.']);
+      else if (n==='NotFoundError'||n==='DevicesNotFoundError')
+        _micFail(btn,dot,lbl,res,'No microphone found.',['Plug in or enable a microphone.']);
+      else if (n==='NotReadableError'||n==='TrackStartError')
+        _micFail(btn,dot,lbl,res,'Microphone in use by another app.',['Close Zoom, Teams, or other apps.','Reload and test again.']);
+      else
+        _micStartSR(btn,dot,lbl,res,SR);
+    });
+}
+
+function _micStartSR(btn,dot,lbl,res,SR) {
+  lbl.textContent = 'Testing Speech Recognition…';
+  var rec = new SR(); rec.lang='ar-SA'; rec.continuous=false; rec.interimResults=false;
+  var done = false;
+
+  rec.onstart = function() {
+    if (done) return; done=true; rec.stop();
+    _micOk(btn,dot,lbl,res,'Microphone is working! Speech Recognition active.','Click START LISTENING to begin recitation.');
+  };
+  rec.onerror = function(ev) {
+    if (done) return; done=true;
+    if (ev.error==='no-speech') {
+      _micOk(btn,dot,lbl,res,'Microphone working (no speech in test).','Start Listening is ready.');
+    } else if (ev.error==='not-allowed'||ev.error==='service-not-allowed') {
+      _micFail(btn,dot,lbl,res,'Microphone blocked.',['Tap lock icon → Microphone → Allow.','Reload and test again.']);
+    } else {
+      _micFail(btn,dot,lbl,res,'Error: '+ev.error,['Reload and try again.']);
+    }
+  };
+  setTimeout(function() {
+    if (!done) { done=true; try{rec.stop();}catch(e){} _micOk(btn,dot,lbl,res,'Microphone appears to be working.','Click START LISTENING.'); }
+  }, 3000);
+  try { rec.start(); } catch(e) { if(!done){done=true; _micFail(btn,dot,lbl,res,'Could not start: '+e.message,['Reload and try again.']);} }
+}
+
+function _micOk(btn,dot,lbl,res,title,sub) {
+  btn.disabled=false; btn.innerHTML='🔬 TEST MICROPHONE';
+  dot.className='mic-dot ok'; lbl.textContent='Mic working ✓';
+  res.className='mic-result ok';
+  res.innerHTML='<strong>✅ '+title+'</strong><br>'+sub;
+  res.style.display='block';
+  document.getElementById('startBtn').disabled=(selAyahs.length===0);
+  toast('Microphone test passed ✓');
+}
+
+function _micFail(btn,dot,lbl,res,title,steps) {
+  btn.disabled=false; btn.innerHTML='🔬 TEST MICROPHONE';
+  dot.className='mic-dot fail'; lbl.textContent='Mic blocked ✗';
+  res.className='mic-result fail';
+  var h='<strong>❌ '+title+'</strong><ol>';
+  steps.forEach(function(s){h+='<li>'+s+'</li>';});
+  h+='</ol>';
+  res.innerHTML=h; res.style.display='block';
+  toast('Mic test failed — see instructions','error');
+}
+
+// ── Fullscreen ────────────────────────────────────────
+function toggleFS() {
+  var panel=document.getElementById('qPanel');
+  var btn=document.getElementById('fsBtn');
+  isFS=!isFS;
+  if (isFS) {
+    panel.classList.add('fullscreen');
+    document.body.classList.add('has-fullscreen');
+    btn.textContent='✕'; btn.title='Exit (Esc)';
+    var sp=panel.querySelector('.ayah-span.speaking');
+    if (sp) setTimeout(function(){sp.scrollIntoView({behavior:'smooth',block:'center'});},80);
+  } else {
+    panel.classList.remove('fullscreen');
+    document.body.classList.remove('has-fullscreen');
+    btn.textContent='⛶'; btn.title='Fullscreen';
+  }
+}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&isFS)toggleFS();});
+
+// ── Toast ─────────────────────────────────────────────
+function toast(msg, type) {
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.background=type==='error'?'rgba(120,15,15,.97)':'rgba(22,80,48,.97)';
+  t.style.borderColor=type==='error'?'#e05050':'#2d8a58';
+  t.classList.add('show');
+  clearTimeout(_toast);
+  _toast=setTimeout(function(){t.classList.remove('show');},3400);
+}
+</script>
+</body>
+</html>
